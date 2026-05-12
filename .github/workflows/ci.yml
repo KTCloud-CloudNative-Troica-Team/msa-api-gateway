@@ -90,6 +90,7 @@ jobs:
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
       - name: Push to ECR
         if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'

@@ -1,0 +1,21 @@
+# .trivyignore — Troica api-gateway
+#
+# 본 파일에 명시된 CVE는 Trivy scan 결과에서 제외됩니다.
+# 각 항목은 명시적 위협 모델 + 호환성 근거를 포함해야 합니다.
+
+# ──────────────────────────────────────────────────────────────────
+# CVE-2026-42577 — Netty epoll transport DoS via RST on half-closed TCP
+# ──────────────────────────────────────────────────────────────────
+# 영향: netty-transport-native-epoll
+# 현재 버전: 4.1.133.Final
+# Fix 버전: 4.2.13.Final (4.1.x line에는 fix 없음)
+#
+# 왜 무시:
+# 1. 4.2.x로 bump 시 reactor-netty 1.2.x (Spring Boot 3.5.x BOM)와 호환성 보장 안 됨.
+#    Spring Boot 3.5.14는 netty 4.1.x를 기준으로 빌드/테스트됨.
+# 2. 위협 모델: 본 서비스는 private k8s 클러스터 내부에서 Istio Gateway 뒤에 배치.
+#    외부 클라이언트가 직접 pod의 TCP 소켓에 RST 패킷을 보낼 수 없음.
+#    half-closed connection exploit은 직접 TCP 노출이 전제 → 본 배포 형태에서 비현실적.
+# 3. 다음 Spring Boot 패치(3.5.15+)가 netty 4.2.x로 BOM 갱신하면 즉시 해제 + override 제거.
+#    또는 reactor-netty가 4.2.x 호환 발표 시 즉시 bump.
+CVE-2026-42577
