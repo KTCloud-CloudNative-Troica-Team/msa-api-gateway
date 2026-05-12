@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "dev.ktcloud.black.auth.service.adapter.presentation.web.inbound.grpc";
+
+package auth.service;
+
+service AuthService {
+  rpc SignUp (SignUpRequest) returns (Empty);
+  rpc SignIn (SignInRequest) returns (SignInResponse);
+  rpc CheckValidity(CheckValidityRequest) returns (UserResponseDto);
+}
+
+message UserResponseDto {
+  string id = 1;
+  string role = 2;
+  string email = 3;
+  string name = 4;
+}
+
+message TokenResponseDto {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message SignUpRequest {
+  string email = 1;
+  string plainPassword = 2;
+  string name = 3;
+}
+
+message SignInRequest {
+  string email = 1;
+  string plainPassword = 2;
+}
+
+message SignInResponse {
+  TokenResponseDto token = 1;
+  UserResponseDto user = 2;
+}
+
+message CheckValidityRequest {
+  string accessToken = 1;
+}
+
+message Empty {}

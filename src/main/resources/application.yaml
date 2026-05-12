@@ -1,0 +1,64 @@
+# Base 설정. 환경별 application-{dev,prod}.yaml이 host/port 등을 덮어쓴다.
+spring:
+  application:
+    name: api-gateway
+
+  # Q1 (c) 혼합 패턴 — Spring Cloud Gateway routes 신규 추가.
+  # BFF (REST controllers) 가 처리하는 경로: /api/v1/{orders,products,inventories}/**, /api/v1/auth/**
+  # SC Gateway routes 가 처리하는 경로 (reverse proxy):
+  #   - /api/v1/users/** → user-service (BFF 없이 직접 패스스루)
+  #   - /admin/v1/orders/** → order-service (admin endpoint, JWT 보호 영역과 별도)
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-service-route
+              uri: ${ROUTE_USER_SERVICE_URI:http://localhost:8004}
+              predicates:
+                - Path=/api/v1/users/**
+            - id: order-admin-route
+              uri: ${ROUTE_ORDER_SERVICE_URI:http://localhost:8002}
+              predicates:
+                - Path=/admin/v1/orders/**
+
+# gRPC clients (BFF용). K8s에서는 Service DNS로 override.
+grpc:
+  client:
+    product-service:
+      address: ${GRPC_PRODUCT_SERVICE_ADDR:static://localhost:9001}
+      negotiation-type: plaintext
+    order-service:
+      address: ${GRPC_ORDER_SERVICE_ADDR:static://localhost:9002}
+      negotiation-type: plaintext
+    inventory-service:
+      address: ${GRPC_INVENTORY_SERVICE_ADDR:static://localhost:9003}
+      negotiation-type: plaintext
+    auth-service:
+      address: ${GRPC_AUTH_SERVICE_ADDR:static://localhost:9005}
+      negotiation-type: plaintext
+
+server:
+  port: ${SERVER_PORT:8100}
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health, info, prometheus
+      path-mapping:
+        health: healthz
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    groups-order: DESC
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs

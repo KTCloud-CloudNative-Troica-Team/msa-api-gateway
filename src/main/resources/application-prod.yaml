@@ -1,0 +1,28 @@
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-service-route
+              uri: http://user-service:8004
+              predicates: ["Path=/api/v1/users/**"]
+            - id: order-admin-route
+              uri: http://order-service:8002
+              predicates: ["Path=/admin/v1/orders/**"]
+
+grpc:
+  client:
+    product-service:
+      address: "static://product-service:9001"
+    order-service:
+      address: "static://order-service:9002"
+    inventory-service:
+      address: "static://inventory-service:9003"
+    auth-service:
+      address: "static://auth-service:9005"
+
+logging:
+  level:
+    root: INFO
+    dev.ktcloud.black: INFO
