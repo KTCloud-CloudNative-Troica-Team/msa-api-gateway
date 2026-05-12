@@ -4,7 +4,7 @@ plugins {
     java
     kotlin("jvm") version "2.1.0"
     kotlin("plugin.spring") version "2.1.0"
-    id("org.springframework.boot") version "3.5.13"
+    id("org.springframework.boot") version "3.5.14"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.google.protobuf") version "0.9.5"
 }
@@ -13,7 +13,7 @@ group = "com.troica.msa"
 version = providers.gradleProperty("version").get()
 
 object Versions {
-    const val GRPC = "1.68.1"
+    const val GRPC = "1.75.0"
     const val GRPC_KOTLIN = "1.4.1"
     const val PROTOBUF = "4.34.1"
     const val JWT = "0.12.6"
@@ -47,8 +47,8 @@ kotlin {
 
 dependencyManagement {
     imports {
-        // Spring Boot 3.5.13 BOM
-        mavenBom("org.springframework.boot:spring-boot-dependencies:3.5.13")
+        // Spring Boot 3.5.14 BOM
+        mavenBom("org.springframework.boot:spring-boot-dependencies:3.5.14")
         // Spring Cloud 2025.0.2 (Northfields) — SB 3.5.x 공식 짝, Q1 (c) 결정 BOM
         mavenBom("org.springframework.cloud:spring-cloud-dependencies:2025.0.2")
     }
