@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "dev.ktcloud.black.inventory.service.adapter.presentation.web.inbound.grpc";
+
+package inventory.service;
+
+service InventoryService {
+  rpc CreateInventory (CreateInventoryRequest) returns (InventoryResponseDto);
+  rpc DecreaseInventory (DecreaseInventoryRequest) returns (InventoryResponseDto);
+  rpc IncreaseInventory (IncreaseInventoryRequest) returns (InventoryResponseDto);
+  rpc FetchInventory (FetchInventoryRequest) returns (InventoryResponseDto);
+  rpc FetchInventories (Empty) returns (FetchInventoriesResponse);
+}
+
+message InventoryResponseDto {
+  int64 id = 1;
+  string productId = 2;
+  string skuCode = 3;
+  int32 quantity = 4;
+}
+
+message CreateInventoryRequest {
+  string productId = 1;
+  string skuCode = 2;
+}
+
+message DecreaseInventoryRequest {
+  int64 orderId = 1;
+  int64 inventoryId = 2;
+  int32 amount = 3;
+}
+
+message IncreaseInventoryRequest {
+  int64 inventoryId = 1;
+  int32 amount = 2;
+}
+
+message FetchInventoryRequest {
+  int64 id = 1;
+}
+
+message Empty {}
+
+message FetchInventoriesResponse {
+  repeated InventoryResponseDto inventories = 1;
+}
+

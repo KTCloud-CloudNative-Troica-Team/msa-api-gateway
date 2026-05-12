@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write          # OIDC (push 단계에서만 실제 사용)
+  contents: read
+  pull-requests: write     # update-prod job이 PR 생성
+  packages: read           # common-libs를 GitHub Packages에서 pull
+
+env:
+  AWS_REGION: ap-northeast-2
+  SERVICE_NAME: api-gateway
+  ECR_REPO: msa/api-gateway
+  MANIFEST_REPO: KTCloud-CloudNative-Troica-Team/msa-argocd-manifest
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # common-libs를 GitHub Packages에서 받기 위한 인증 — GITHUB_TOKEN은 actions가 자동 발급.
+      - name: Build & test
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew build --no-daemon
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=main-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # ===== 아래 step들은 Phase 0 + AWS_DEPLOYMENTS_ENABLED 변수 활성화 후 동작 =====
+      # 필요 자원: OIDC role(troica-gha-ecr-push), ECR repo(msa/api-gateway),
+      #          Org/Repo Secrets(AWS_ACCOUNT_ID, MANIFEST_PAT),
+      #          Org/Repo Variable(AWS_DEPLOYMENTS_ENABLED=true).
+      # 활성화 절차: GitHub → Repo Settings → Secrets and variables → Actions → Variables 탭
+      #          → 새 variable `AWS_DEPLOYMENTS_ENABLED` = `true` 추가 (Org 레벨에 두면 6개 서비스 일괄 적용).
+      # 비활성 상태에선 모든 push-gated step/job이 skip → main CI는 build-test만 돌고 녹색 유지.
+
+      - name: Configure AWS credentials (OIDC)
+        if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/troica-gha-ecr-push
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: ECR login
+        if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
+          build-args: |
+            GPR_USER=${{ github.actor }}
+            GPR_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+      # Trivy scan
+      # 주의: 2026-03-19 aquasecurity/trivy-action 공급망 사고로 0.0.1~0.34.2 태그는 모두 compromised.
+      # 사고 후 새 태그 컨벤션은 `v` prefix. 본 PoC는 v0.36.0(2026-04-22 release)로 핀.
+      # 보안 강화 시 commit SHA 핀 + Dependabot/Renovate 도입 권장.
+      - name: Trivy scan
+        if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
+          format: table
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      - name: Push to ECR
+        if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'
+        run: |
+          docker push ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
+
+  update-dev:
+    needs: build-test
+    if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.MANIFEST_REPO }}
+          token: ${{ secrets.MANIFEST_PAT }}
+
+      - uses: mikefarah/yq@v4
+
+      - name: Bump dev image tag
+        run: |
+          yq -i '.image.tag = "${{ needs.build-test.outputs.image-tag }}"' \
+            applications/values/${{ env.SERVICE_NAME }}/values-dev.yaml
+
+      - name: Commit & push to main (dev = auto)
+        run: |
+          git config user.name "troica-ci-bot"
+          git config user.email "ci-bot@troica"
+          git add applications/values/${{ env.SERVICE_NAME }}/values-dev.yaml
+          git commit -m "deploy(${{ env.SERVICE_NAME }}/dev): ${{ needs.build-test.outputs.image-tag }}"
+          git push origin main
+
+  update-prod:
+    needs: build-test
+    if: github.event_name == 'push' && vars.AWS_DEPLOYMENTS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.MANIFEST_REPO }}
+          token: ${{ secrets.MANIFEST_PAT }}
+
+      - uses: mikefarah/yq@v4
+
+      - name: Bump prod image tag
+        run: |
+          yq -i '.image.tag = "${{ needs.build-test.outputs.image-tag }}"' \
+            applications/values/${{ env.SERVICE_NAME }}/values-prod.yaml
+
+      - name: Create PR for prod
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.MANIFEST_PAT }}
+          branch: bump/${{ env.SERVICE_NAME }}-prod-${{ needs.build-test.outputs.image-tag }}
+          base: main
+          title: "deploy(${{ env.SERVICE_NAME }}/prod): ${{ needs.build-test.outputs.image-tag }}"
+          commit-message: "deploy(${{ env.SERVICE_NAME }}/prod): ${{ needs.build-test.outputs.image-tag }}"
+          body: |
+            Auto-generated prod deployment PR.
+
+            **Service**: ${{ env.SERVICE_NAME }}
+            **Image tag**: `${{ needs.build-test.outputs.image-tag }}`
+            **Source commit**: ${{ github.event.compare }}
+
+            Manual review required. Merge to deploy to prod.
+          labels: |
+            prod-deploy
+            ${{ env.SERVICE_NAME }}
