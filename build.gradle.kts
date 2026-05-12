@@ -79,6 +79,23 @@ dependencies {
     implementation("io.grpc:grpc-kotlin-stub:${Versions.GRPC_KOTLIN}")
     implementation("io.grpc:grpc-netty-shaded:${Versions.GRPC}")
 
+    // Netty CVE override — webflux/reactor-netty가 netty-codec-* 4.1.132.Final을 가져오나
+    // 다음 CVE들이 4.1.133.Final에서 fix됨 (SB 3.5.14 BOM은 아직 4.1.132 그대로):
+    //   CVE-2026-42583 (netty-codec Lz4FrameDecoder resource exhaustion)
+    //   CVE-2026-42579 (netty-codec-dns input validation bypass)
+    //   CVE-2026-42584/42587 (netty-codec-http response desync + decompression bypass)
+    //   CVE-2026-42577 (netty-transport-native-epoll DoS via RST)
+    // grpc-netty-shaded는 shaded라 별개 — 영향 없음.
+    implementation("io.netty:netty-codec:4.1.133.Final")
+    implementation("io.netty:netty-codec-dns:4.1.133.Final")
+    implementation("io.netty:netty-codec-http:4.1.133.Final")
+    implementation("io.netty:netty-codec-http2:4.1.133.Final")
+    implementation("io.netty:netty-transport-native-epoll:4.1.133.Final")
+
+    // BouncyCastle CVE override — Spring Security가 1.80을 transitively 가져옴.
+    //   CVE-2026-5598 (private key leakage via non-constant-time comparisons) fix in 1.84.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.84")
+
     // JWT — JwtHeaderCheckFilter가 토큰 parse용 사용 (검증은 auth-service gRPC CheckValidity)
     implementation("io.jsonwebtoken:jjwt-api:${Versions.JWT}")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:${Versions.JWT}")
