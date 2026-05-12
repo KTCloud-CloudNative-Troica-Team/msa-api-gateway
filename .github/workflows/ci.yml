@@ -73,9 +73,6 @@ jobs:
           push: false
           load: true
           tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
-          build-args: |
-            GPR_USER=${{ github.actor }}
-            GPR_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       # Trivy scan
       # 주의: 2026-03-19 aquasecurity/trivy-action 공급망 사고로 0.0.1~0.34.2 태그는 모두 compromised.

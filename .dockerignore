@@ -1,13 +1,28 @@
+# Docker build context 필터.
+# R-27 (a) 적용 후: Docker는 build/libs/*.jar 만 필요. 소스/캐시 제외.
+
 .gradle
-build
+src/
+
+build/classes/
+build/kotlin/
+build/kapt/
+build/generated/
+build/tmp/
+build/reports/
+build/test-results/
+build/resources/
+
 .git
 .github
 .idea
 .vscode
 *.iml
+
 *.md
 .env
 .env.*
 *.local.*
+
 Dockerfile
 .dockerignore

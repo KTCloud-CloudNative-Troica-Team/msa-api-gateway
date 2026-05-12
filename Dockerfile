@@ -1,29 +1,18 @@
 # syntax=docker/dockerfile:1.7
 
-FROM eclipse-temurin:21-jdk AS build
-WORKDIR /app
+# R-27 (a): 호스트의 `./gradlew build`가 이미 테스트 + bootJar 완료 → Docker는
+# packaging만 담당 (~1.5분 절약). 기존 3-stage 빌드 (build → layers → runtime)
+# 에서 build stage 제거.
+#
+# 사전 조건: ci.yml의 build-test step이 build/libs/*.jar를 생성 (single module).
 
-COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
-COPY gradle gradle
-RUN chmod +x gradlew
-
-ARG GPR_USER
-ARG GPR_TOKEN
-RUN if [ -n "$GPR_USER" ] && [ -n "$GPR_TOKEN" ]; then \
-      mkdir -p /root/.gradle && \
-      echo "gpr.user=$GPR_USER" > /root/.gradle/gradle.properties && \
-      echo "gpr.token=$GPR_TOKEN" >> /root/.gradle/gradle.properties ; \
-    fi
-RUN ./gradlew dependencies --no-daemon || true
-
-COPY src src
-RUN ./gradlew bootJar --no-daemon -x test
-
+# ===== Stage 1: layered jar extraction =====
 FROM eclipse-temurin:21-jre-alpine AS layers
 WORKDIR /app
-COPY --from=build /app/build/libs/*.jar app.jar
+COPY build/libs/*.jar app.jar
 RUN java -Djarmode=layertools -jar app.jar extract
 
+# ===== Stage 2: runtime =====
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
