@@ -2,11 +2,41 @@ import com.google.protobuf.gradle.id
 
 plugins {
     java
+    jacoco                                                       // R-45: 커버리지 측정
     kotlin("jvm") version "2.1.0"
     kotlin("plugin.spring") version "2.1.0"
     id("org.springframework.boot") version "3.5.14"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.google.protobuf") version "0.9.5"
+
+    // R-45 (평가 심화 (2)-1): SonarCloud 정적 분석 + 커버리지 게이트.
+    id("org.sonarqube") version "5.1.0.4882"
+}
+
+// R-45: single module이라 root에 직접 sonar { } + jacoco task config 적용.
+// multi-module 패턴 (msa-product-service 등)과 달리 subprojects 블록 없음.
+sonar {
+    properties {
+        property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.organization", "ktcloud-cloudnative-troica-team")
+        property("sonar.projectKey", "KTCloud-CloudNative-Troica-Team_msa-api-gateway")
+        property("sonar.qualitygate.wait", "true")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
+        // Protobuf 코드젠 + build 산출물은 분석 제외
+        property("sonar.exclusions", "**/generated/**, **/build/**, src/main/proto/**")
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    finalizedBy(tasks.matching { it.name == "jacocoTestReport" })
+}
+tasks.withType<JacocoReport>().configureEach {
+    dependsOn(tasks.withType<Test>())
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
 
 group = "com.troica.msa"
