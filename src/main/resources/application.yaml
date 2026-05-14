@@ -62,3 +62,24 @@ springdoc:
     operations-sorter: alpha
   api-docs:
     path: /v3/api-docs
+
+# R-41 (평가 기본 (2)-3, (2)-4): Resilience4j Circuit Breaker — 백엔드 장애 격리.
+# 동작 원리: sliding window에서 실패율이 threshold 초과 시 OPEN 상태로 전환됨.
+# OPEN 상태에서는 호출 즉시 거부되어 fallback path가 실행됨 (장애 전파 차단).
+# wait-duration 경과 후 HALF_OPEN — 일부 호출만 시험 통과 → 성공 시 CLOSED 복귀.
+#
+# 본 PR 적용 범위: inventory-service (Response Aggregate 데모용). product/order/auth 는
+# 동일 패턴으로 후속 적용 가능. 발표 시 inventory 다운 시키고 fetchAll() 빈 리스트로
+# 부분 응답 반환되는 것 시연.
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventory-service:
+        failure-rate-threshold: 50              # 50% 이상 실패 시 OPEN
+        slow-call-rate-threshold: 50            # 50% 이상 slow call 시도 OPEN
+        slow-call-duration-threshold: 2s        # 2초 초과 = slow
+        minimum-number-of-calls: 5              # 평가 최소 호출 수 (warmup)
+        sliding-window-size: 10                 # 최근 10건 평가
+        wait-duration-in-open-state: 30s        # OPEN 후 30초 뒤 HALF_OPEN 진입
+        permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true         # Actuator /healthz에 상태 노출

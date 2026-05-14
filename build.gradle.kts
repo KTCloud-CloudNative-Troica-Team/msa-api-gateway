@@ -17,6 +17,7 @@ object Versions {
     const val GRPC_KOTLIN = "1.4.1"
     const val PROTOBUF = "4.34.1"
     const val JWT = "0.12.6"
+    const val RESILIENCE4J = "2.2.0"   // R-41: Spring Boot 3.5 호환 최신
 }
 
 repositories {
@@ -103,6 +104,14 @@ dependencies {
 
     // springdoc — swagger UI (springdoc-openapi 2.5.0은 SB 3.5와 호환)
     implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:2.5.0")
+
+    // R-41 (평가 기본 (2)-4 + 선택): Resilience4j Circuit Breaker.
+    // - resilience4j-spring-boot3: auto-config (Actuator endpoint + registry Bean 주입)
+    // - resilience4j-kotlin: suspend 함수에 executeSuspendFunction 확장 제공
+    // - resilience4j-reactor: Mono/Flux 어댑터 (BFF 외 reactive 호출용)
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:${Versions.RESILIENCE4J}")
+    implementation("io.github.resilience4j:resilience4j-kotlin:${Versions.RESILIENCE4J}")
+    implementation("io.github.resilience4j:resilience4j-reactor:${Versions.RESILIENCE4J}")
 }
 
 sourceSets {
