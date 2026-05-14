@@ -70,6 +70,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
 
+    // R-50: SC Gateway RequestRateLimiter filter는 Reactive Redis로 Token Bucket을 구현함.
+    // Phase 5 Redis Cluster 배포 전까지는 dev 단계 localhost:6379 또는 컨테이너로 검증함.
+    implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
+
     // gRPC client (auth-service / order / product / inventory 호출)
     implementation("net.devh:grpc-client-spring-boot-starter:3.1.0.RELEASE")
     implementation("com.google.protobuf:protobuf-java:${Versions.PROTOBUF}")

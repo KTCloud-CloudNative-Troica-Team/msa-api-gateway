@@ -3,6 +3,13 @@ spring:
   application:
     name: api-gateway
 
+  # R-50: SC Gateway RequestRateLimiter용 Redis (Reactive). Phase 5에서는
+  # K8s Service DNS (예: redis-master.platform)로 override함. dev/local은 6379.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   # Q1 (c) 혼합 패턴 — Spring Cloud Gateway routes 신규 추가.
   # BFF (REST controllers) 가 처리하는 경로: /api/v1/{orders,products,inventories}/**, /api/v1/auth/**
   # SC Gateway routes 가 처리하는 경로 (reverse proxy):
@@ -12,6 +19,22 @@ spring:
     gateway:
       server:
         webflux:
+          # R-50 (평가 기본 (2)-5): Token Bucket Rate Limit.
+          # default-filters 로 SC Gateway routes 전부에 적용함. BFF 경로(WebFlux controller가
+          # 처리하는 /api/v1/auth /products /orders /inventory) 는 SC Gateway 거치지
+          # 않으므로 별도 보호 필요 — 발표 단계 한정 SC Gateway routes 만 cover, BFF 경로는
+          # Resilience4j RateLimiter 또는 후속 WebFilter 로 보강 예정.
+          #
+          # replenishRate: 초당 추가되는 토큰 수 (정상 throughput).
+          # burstCapacity: 버킷 최대 토큰 수 (순간 burst 허용 한계).
+          # 예) replenishRate=1, burstCapacity=10 → 평균 60 req/min + 순간 10 req burst 허용.
+          default-filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
           routes:
             - id: user-service-route
               uri: ${ROUTE_USER_SERVICE_URI:http://localhost:8004}
@@ -21,6 +44,15 @@ spring:
               uri: ${ROUTE_ORDER_SERVICE_URI:http://localhost:8002}
               predicates:
                 - Path=/admin/v1/orders/**
+              # admin endpoint는 사용자 트래픽이 아니므로 별도 더 빡빡한 제한 부여.
+              # default-filters 의 RequestRateLimiter 도 동시 적용되어 합집합으로 작동함.
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 3
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@userKeyResolver}"
 
 # gRPC clients (BFF용). K8s에서는 Service DNS로 override.
 grpc:
