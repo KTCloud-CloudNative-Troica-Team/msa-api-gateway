@@ -41,7 +41,7 @@ class InventoryQueryServiceTest {
             .setQuantity(100)
             .build()
 
-        coEvery { stub.fetchInventory(any<FetchInventoryRequest>()) } returns grpcResponse
+        coEvery { stub.fetchInventory(any<FetchInventoryRequest>(), any()) } returns grpcResponse
 
         val out = service.fetchInventory(FetchInventoryQuery.In(id = 42L))
 
@@ -55,7 +55,7 @@ class InventoryQueryServiceTest {
     @DisplayName("fetchInventory 실패 경로 — stub 예외 발생 시 fallback (quantity=-1, skuCode=UNAVAILABLE)")
     fun `fetchInventory fallback`() = runTest {
         coEvery {
-            stub.fetchInventory(any<FetchInventoryRequest>())
+            stub.fetchInventory(any<FetchInventoryRequest>(), any())
         } throws RuntimeException("inventory-service unavailable")
 
         val out = service.fetchInventory(FetchInventoryQuery.In(id = 999L))
@@ -78,7 +78,7 @@ class InventoryQueryServiceTest {
             .addAllInventories(listOf(inv1, inv2))
             .build()
 
-        coEvery { stub.fetchInventories(any<Empty>()) } returns response
+        coEvery { stub.fetchInventories(any<Empty>(), any()) } returns response
 
         val out = service.fetchAll()
 
@@ -93,7 +93,7 @@ class InventoryQueryServiceTest {
     @DisplayName("fetchAll 실패 경로 — stub 예외 시 fallback emptyList")
     fun `fetchAll fallback`() = runTest {
         coEvery {
-            stub.fetchInventories(any<Empty>())
+            stub.fetchInventories(any<Empty>(), any())
         } throws RuntimeException("inventory-service unavailable")
 
         val out = service.fetchAll()
