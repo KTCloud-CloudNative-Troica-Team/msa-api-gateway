@@ -41,6 +41,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew build --no-daemon
 
+      # R-45 (평가 심화 (2)-1): SonarCloud public 무료 plan + Quality Gate.
+      # 활성화: GitHub Org Secret SONAR_TOKEN + Org Variable SONARCLOUD_ENABLED=true
+      - name: SonarCloud scan
+        if: vars.SONARCLOUD_ENABLED == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew sonar --no-daemon
+
       - name: Set image tag
         id: meta
         run: echo "tag=main-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
