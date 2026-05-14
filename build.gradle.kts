@@ -146,6 +146,11 @@ dependencies {
     implementation("io.github.resilience4j:resilience4j-spring-boot3:${Versions.RESILIENCE4J}")
     implementation("io.github.resilience4j:resilience4j-kotlin:${Versions.RESILIENCE4J}")
     implementation("io.github.resilience4j:resilience4j-reactor:${Versions.RESILIENCE4J}")
+
+    // R-57: 단위 테스트 — JUnit 5 + AssertJ + Mockito (starter-test) + MockK (suspend 함수 mock 친화) + coroutines-test
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("io.mockk:mockk:1.13.13")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }
 
 sourceSets {
