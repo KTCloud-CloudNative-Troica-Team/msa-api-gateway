@@ -90,7 +90,10 @@ dependencyManagement {
 }
 
 dependencies {
-    implementation("com.troica.msa:common:0.3.1")
+    // 0.3.1 → 0.4.0: common-libs 의 spring-boot-starter-web (servlet 전체) 가
+    // transitive 로 흘러들어와 SCG validation fail. 0.4.0 부터 spring-web 만 (servlet
+    // 없음) → reactive 호환. msa-common-libs PR #8 / tag v0.4.0 참조.
+    implementation("com.troica.msa:common:0.4.0")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
