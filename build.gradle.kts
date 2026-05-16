@@ -120,6 +120,15 @@ dependencies {
     implementation("io.grpc:grpc-stub:${Versions.GRPC}")
     implementation("io.grpc:grpc-kotlin-stub:${Versions.GRPC_KOTLIN}")
     implementation("io.grpc:grpc-netty-shaded:${Versions.GRPC}")
+    // SCG 2025.0.x 의 GatewayAutoConfiguration 가 `@ConditionalOnClass("io.grpc.Channel")` 로
+    // GrpcSslConfigurer + JsonToGrpcGatewayFilterFactory 자동 등록. GrpcSslConfigurer 가
+    // non-shaded `io.grpc.netty.NettyChannelBuilder` 요구. classpath 에 grpc-netty-shaded
+    // (`io.grpc.netty.shaded.io.grpc.netty.*` 별도 path) 만 있으면 ClassNotFoundException →
+    // startup fail. 두 artifact 공존 가능 (다른 package path) — non-shaded 추가.
+    //
+    // net.devh client 는 log 의 "Detected grpc-netty-shaded: Creating ShadedNettyChannelFactory"
+    // 따라 shaded 우선 사용. 동작 변경 없음.
+    implementation("io.grpc:grpc-netty:${Versions.GRPC}")
 
     // Netty CVE override — webflux/reactor-netty가 netty-codec-* 4.1.132.Final을 가져오나
     // 다음 CVE들이 4.1.133.Final에서 fix됨 (SB 3.5.14 BOM은 아직 4.1.132 그대로):
