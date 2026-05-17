@@ -106,6 +106,13 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // R-65 (평가 기본 (3)-3 필수): Prometheus text format 의 /actuator/prometheus
+    // endpoint 노출. spring-boot-starter-actuator 만으로는 /actuator/metrics
+    // (JSON) 만 노출되고 /actuator/prometheus 는 404. 본 의존성 추가 +
+    // msa-argocd-manifest PR #120 의 MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+    // env 와 함께 endpoint 정상 노출 → ServiceMonitor scrape OK → Grafana
+    // Troica dashboard 의 6 panel data 표시.
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     implementation("org.springframework.boot:spring-boot-starter-security")
 
     // R-50: SC Gateway RequestRateLimiter filter는 Reactive Redis로 Token Bucket을 구현함.
